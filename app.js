@@ -10,7 +10,7 @@ const statusEl=$('status'),listEl=$('vehicles'),refreshButton=$('refresh'),moreE
 const sourceEl=$('source'),stopDesc=$('stop-description');
 const pickButtons=Array.from(document.querySelectorAll('[data-stop]'));
 let selected='dinc',generation=0,controller=null;
-try { if(localStorage.getItem('dinc13-v2-stop') in STOPS)selected=localStorage.getItem('dinc13-v2-stop'); } catch(e){}
+try { if(Object.hasOwn(STOPS,localStorage.getItem('dinc13-v2-stop')))selected=localStorage.getItem('dinc13-v2-stop'); } catch(e){}
 function setStopUI(){
   for(const el of pickButtons)el.setAttribute('aria-pressed',String(el.dataset.stop===selected));
   const stop=STOPS[selected];
@@ -40,14 +40,11 @@ function remainingStops(bus,stopCode){
     let best=null;
     for(let i=0;i<points.length-1;i++){
       const pr=projection(bus,points[i],points[i+1]);
-      if(best===null||pr.distance<best.distance)best={...pr,i};
+      if(!best||pr.distance<best.distance)best={...pr,i};
     }
     if(!best)continue;
     matches.push({variant:route.id,distance:best.distance,
       remaining:goalIndex-best.i,
-      nextCode:points[best.i+1][0],
-      // The bus is presumed to be between i and i+1; neither stop passage
-      // nor the actual road path is confirmed.
       upcoming:points.slice(best.i+1).map(p=>({code:p[0],name:p[1]}))});
   }
   if(!matches.length)return null;
@@ -66,19 +63,37 @@ function remainingStops(bus,stopCode){
     }
     return direction==='forward'?result:result.reverse();
   };
-  // Forward path is useful for leaving-home decisions. If variants branch
-  // immediately, show their common final approach instead, *without* a bus
-  // marker claiming progress along it.
   const forward=common('forward',10);
   const tail=common('tail',10);
   const view=forward.length?'forward':tail.length?'final':'none';
   const stops=view==='forward'?forward:view==='final'?tail:[];
-  const fullForward=view==='forward'&&min===max&&forward.length===min;
-  const lastShown=stops.at(-1)?.code;
-  return {min,max,view,stops,fullForward,
-    goalShown:lastShown===stopCode,
-    hiddenMin:view==='forward'?Math.max(0,min-stops.length):Math.max(0,min-stops.length),
-    hiddenMax:view==='forward'?Math.max(0,max-stops.length):Math.max(0,max-stops.length),
+  // One route can be represented by many identical schedule variant IDs.
+  // Deduplicate *stop sequences*, not route IDs. These are possibilities,
+  // never evidence that the vehicle actually passed a stop.
+  const prefixLength=view==='forward'?forward.length:0;
+  const suffixLength=view==='final'?tail.length:
+    (view==='forward' && forward.length<10 && forward.at(-1)?.code!==stopCode?tail.length:0);
+  const alternativeMap=new Map();
+  for(const candidate of candidates){
+    const begin=Math.min(prefixLength,candidate.upcoming.length);
+    const end=Math.max(begin,candidate.upcoming.length-suffixLength);
+    const nodes=candidate.upcoming.slice(begin,end);
+    if(nodes.length===0)continue;
+    const key=nodes.map(p=>p.code).join('/');
+    if(!alternativeMap.has(key))alternativeMap.set(key,{nodes,routeCount:0,distance:candidate.distance});
+    const group=alternativeMap.get(key);
+    group.routeCount++;
+    group.distance=Math.min(group.distance,candidate.distance);
+  }
+  const alternatives=[...alternativeMap.values()].sort((a,b)=>a.distance-b.distance||a.nodes.length-b.nodes.length);
+  const hiddenMin=Math.max(0,min-stops.length);
+  const hiddenMax=Math.max(0,max-stops.length);
+  // A single count does not imply a confirmed variant: two variants can have
+  // equal numbers of remaining stops while following different roads.
+  const samePath=candidates.every(x=>x.upcoming.map(p=>p.code).join('/')===candidates[0].upcoming.map(p=>p.code).join('/'));
+  return {min,max,view,stops,forward,tail,alternatives,samePath,
+    goalShown:stops.at(-1)?.code===stopCode,
+    hiddenMin,hiddenMax,
     variantCount:candidates.length,distance:bestDistance};
 }
 function ageSeconds(hms){
@@ -106,52 +121,83 @@ function addVehicleMarker(parent,label){
   return marker;
 }
 function renderRemaining(min,max){return min===max?String(min):min+'–'+max;}
+function renderAlternativeOptions(parent,rem){
+  const groups=rem.alternatives;
+  if(!groups.length){
+    add(parent,'p','timeline-note','Bu bölümün durak adları tek bir güzergâh olarak belirlenemedi.');
+    return;
+  }
+  const alternatives=add(parent,'details','timeline-alternatives');
+  const summary=add(alternatives,'summary','timeline-alt-summary');
+  add(summary,'span','','Olası yolların duraklarını göster');
+  add(summary,'span','alt-count',groups.length+' seçenek');
+  const body=add(alternatives,'div','timeline-alt-list');
+  groups.forEach((group,i)=>{
+    const box=add(body,'div','timeline-alt-path');
+    add(box,'div','timeline-alt-heading','Olası yol '+(i+1)+' · '+group.nodes.length+' durak');
+    const shown=group.nodes.slice(-6);
+    if(group.nodes.length>shown.length){
+      add(box,'p','timeline-alt-ellipsis','… '+(group.nodes.length-shown.length)+' önceki durak daha');
+    }
+    const ol=add(box,'ol','timeline-alt-stops');
+    shown.forEach(point=>add(ol,'li','',point.name));
+  });
+  add(body,'p','timeline-foot','Bunlar olası güzergâhlar; araç için doğrulanmış durak geçişleri değildir.');
+}
+function addStopTimeline(parent,points,stop,placeBus){
+  if(placeBus)addVehicleMarker(parent,'Otobüsün GPS’e göre tahmini yeri');
+  const line=add(parent,'ol','timeline-stops');
+  for(let i=0;i<points.length;i++){
+    const point=points[i],isGoal=point.code===stop.code;
+    const li=add(line,'li','timeline-stop'+(isGoal?' target':'')+(placeBus&&i===0?' next':''));
+    add(li,'span','timeline-dot',isGoal?'◎':'');
+    add(li,'span','timeline-stop-name',isGoal?stop.title+' · biniş':point.name);
+  }
+}
 function makeTrack(card,rem,stop,index,vehicleKey){
   const details=add(card,'details','track');
-  details.open=expandedTracks.has(vehicleKey)?expandedTracks.get(vehicleKey):index===0;
+  // The daily glance should prioritize minutes and stop count. Opening a
+  // vehicle's timeline persists through the 30-second refresh.
+  details.open=expandedTracks.has(vehicleKey)?expandedTracks.get(vehicleKey):false;
   const summary=add(details,'summary','track-summary');
   add(summary,'span','','Yaklaşan duraklar · GPS tahmini');
   add(summary,'span','track-toggle','');
   details.addEventListener('toggle',()=>expandedTracks.set(vehicleKey,details.open));
   const body=add(details,'div','timeline');
   if(rem.view==='none'){
-    add(body,'p','timeline-warning','Güzergâh varyantları uyuşmuyor. Durak isimleri güvenilir biçimde sıralanamıyor.');
+    add(body,'p','timeline-warning','Olası güzergâhların ortak sıradaki durağı bulunamadı.');
+    renderAlternativeOptions(body,rem);
+    add(body,'p','timeline-foot','GPS, aracın izleyeceği kesin güzergâhı göstermiyor.');
     return;
   }
-  if(rem.view==='forward'){
-    addVehicleMarker(body,'Otobüsün tahmini konumu · sıradaki duraklar');
-    if(rem.min!==rem.max){
-      add(body,'p','timeline-warning','Farklı güzergâhlarda kalan durak sayısı değişebilir. Yalnızca ortak sıradaki duraklar gösteriliyor.');
-    }
+  if(rem.view==='final'){
+    const unknownMin=Math.max(0,rem.min-rem.tail.length);
+    const unknownMax=Math.max(0,rem.max-rem.tail.length);
+    const uncertain=add(body,'section','timeline-uncertain');
+    add(uncertain,'div','timeline-section-heading','OLASI ÖNCEKİ BÖLÜM · GÜZERGÂH BELİRSİZ');
+    const position=add(uncertain,'div','timeline-unknown-position');
+    add(position,'span','timeline-unknown-icon','🚌');
+    add(position,'span','','Araç bu olası yollardan birinde olabilir.');
+    add(uncertain,'div','timeline-unknown-count',renderRemaining(unknownMin,unknownMax)+' durak · henüz ortak bölümde değil');
+    renderAlternativeOptions(uncertain,rem);
+    const shared=add(body,'section','timeline-shared');
+    add(shared,'div','timeline-section-heading','TÜM OLASI YOLLARDA ORTAK SON DURAKLAR');
+    addStopTimeline(shared,rem.tail,stop,false);
   }else{
-    add(body,'p','timeline-warning','Güzergâh belirsiz: yalnızca hedefe yakın ortak duraklar gösteriliyor. Otobüsün bu duraklara ulaştığı doğrulanmadı.');
-  }
-  const line=add(body,'ol','timeline-stops');
-  for(let i=0;i<rem.stops.length;i++){
-    const point=rem.stops[i];
-    const isGoal=point.code===stop.code;
-    const li=add(line,'li','timeline-stop'+(isGoal?' target':'')+(rem.view==='forward'&&i===0?' next':''));
-    add(li,'span','timeline-dot',isGoal?'◎':'');
-    const label=add(li,'span','timeline-stop-name',isGoal?stop.title+' · biniş':point.name);
-  }
-  if(!rem.goalShown){
-    // On a forward view, +N includes the destination. On a final-section
-    // view, the goal should be in the common tail; otherwise avoid a count.
-    if(rem.view==='forward'&&rem.hiddenMax>0){
+    const shared=add(body,'section','timeline-shared');
+    add(shared,'div','timeline-section-heading',rem.samePath?'TAHMİNİ SIRADAKİ DURAKLAR':'ORTAK SIRADAKİ DURAKLAR');
+    addStopTimeline(shared,rem.forward,stop,true);
+    if(rem.hiddenMax>0){
       const extra=add(body,'div','timeline-more');
       add(extra,'span','timeline-more-icon','⋯');
       add(extra,'span','',`+${renderRemaining(rem.hiddenMin,rem.hiddenMax)} durak daha · ${stop.title} hedefine`);
-    }else if(rem.view==='forward'){
-      add(body,'p','timeline-warning','Hedefe kalan kesim için ortak güzergâh belirlenemedi.');
+      if(!rem.samePath && rem.forward.length<10){
+        add(body,'p','timeline-warning','Devam eden yolda güzergâh farklılıkları olabilir.');
+        renderAlternativeOptions(body,rem);
+      }
     }
   }
-  if(rem.view==='final'&&rem.min>rem.stops.length){
-    add(body,'p','timeline-note','Otobüs bu son yaklaşma bölümüne henüz ulaşmamış olabilir.');
-  }
-  if(rem.view==='forward'&&rem.hiddenMax>0&&rem.stops.length<10){
-    add(body,'p','timeline-note','Ortak sonraki duraklar burada bitiyor; farklı seferler başka yoldan devam edebilir.');
-  }
-  add(body,'p','timeline-foot','Durak geçişleri ölçülmedi; gösterim GPS konumu ve olası güzergâhlara dayanır.');
+  add(body,'p','timeline-foot','Durak geçişleri ölçülmedi. GPS konumu ve olası İETT güzergâhlarına göre tahmin edilir.');
 }
 function makeCard(bus,index,stop){
   const card=add(document.createDocumentFragment(),'article','card'+(index===0?' primary':''));
@@ -220,7 +266,7 @@ async function refresh(){
 }
 for(const el of pickButtons)el.addEventListener('click',()=>{
   const newStop=el.dataset.stop;
-  if(!(newStop in STOPS)||newStop===selected)return;
+  if(!Object.hasOwn(STOPS,newStop)||newStop===selected)return;
   selected=newStop;
   try{localStorage.setItem('dinc13-v2-stop',selected);}catch(e){}
   setStopUI();listEl.replaceChildren();moreEl.hidden=true;refresh();
