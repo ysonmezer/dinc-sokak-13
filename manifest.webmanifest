@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "13 Otobüs · Dinç Sokak",
-  "short_name": "13 Dinç Sokak",
-  "description": "Dinç Sokak (200051), Kadıköy yönü 13 otobüsü.",
+  "name": "13 Otobüs · Berrak / Dinç Sokak",
+  "short_name": "13 Otobüs",
+  "description": "13 Kadıköy yönü: Berrak Sitesi (Şenol Güneş Bulvarı) veya Dinç Sokak durağı.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
