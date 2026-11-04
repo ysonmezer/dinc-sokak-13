@@ -26,21 +26,37 @@ function remainingStops(bus,stop){
  for(const route of ROUTES){
   const idx=route.points.findIndex(p=>p[0]===stop.match);
   if(idx<1)continue;
-  const points=route.points.slice(0,idx+1);
+  const pts=route.points.slice(0,idx+1);
   let best=null;
-  for(let i=0;i<points.length-1;i++){
-   const p=projection(bus,points[i],points[i+1]);
-   if(best===null||p.distance<best.distance)best={...p,i};
+  for(let i=0;i<pts.length-1;i++){
+   const projectionData=projection(bus,pts[i],pts[i+1]);
+   if(!best||projectionData.distance<best.distance)best={...projectionData,i};
   }
-  if(best)matches.push({variant:route.id,distance:best.distance,remaining:points.length-best.i-1,nextStop:points[best.i+1][0]});
+  if(best){
+   matches.push({variant:route.id,distance:best.distance,
+    remaining:idx-best.i,nextName:pts[best.i+1][0],
+    suffix:pts.slice(Math.max(0,idx-4)).map(p=>p[0])});
+  }
  }
  if(!matches.length)return null;
  matches.sort((a,b)=>a.distance-b.distance);
  const bestDist=matches[0].distance;
  if(bestDist>250)return null;
  const candidates=matches.filter(x=>x.distance<=Math.min(250,bestDist+75));
- const counts=candidates.map(x=>x.remaining),nexts=[...new Set(candidates.map(x=>x.nextStop))];
- return {min:Math.min(...counts),max:Math.max(...counts),nextStop:nexts.length===1?nexts[0]:null};
+ const counts=candidates.map(x=>x.remaining);
+ // Keep only the final stop names shared by all plausible route variants.
+ const reversed=[];
+ for(let offset=1;offset<=5;offset++){
+  const names=candidates.map(x=>x.suffix.at(-offset));
+  if(names.some(n=>!n)||names.some(n=>n!==names[0]))break;
+  reversed.push(names[0]);
+ }
+ const suffix=reversed.length?reversed.reverse():null;
+ const nextNames=[...new Set(candidates.map(x=>x.nextName))];
+ const nextName=nextNames.length===1?nextNames[0]:null;
+ const canPlace=!!suffix&&!!nextName&&suffix.includes(nextName);
+ return {min:Math.min(...counts),max:Math.max(...counts),
+  suffix,nextName,canPlace,variantCount:candidates.length,distance:bestDist};
 }
 function ageSeconds(hms){
  if(!hms||!/^\d{2}:\d{2}:\d{2}$/.test(hms))return null;
@@ -58,31 +74,50 @@ function add(parent,tag,cls,value){
  if(value!==undefined)elem.textContent=String(value);
  parent.appendChild(elem);return elem;
 }
-function node(parent,cls,symbol,label){
- const el=add(parent,'div','track-step '+cls);
- add(el,'span','track-dot',symbol);
- add(el,'span','track-label',label);
+// Preserve expanded card state during periodic data refreshes.
+const expandedTracks=new Map();
+function addVehicleMarker(parent,label){
+ const marker=add(parent,'div','timeline-bus');
+ add(marker,'span','timeline-bus-icon','🚌');
+ add(marker,'span','',label);
+ return marker;
 }
-function connector(parent,label){
- const el=add(parent,'div','track-between');
- add(el,'span','track-arrow','→');
- if(label)add(el,'span','track-distance',label);
-}
-function progress(card,rem,stop){
- const wrap=add(card,'div','track');
- add(wrap,'div','track-title','DURAĞA YAKLAŞMA · TAHMİNİ GÖSTERİM');
- const row=add(wrap,'div','track-steps');
- node(row,'bus','🚌','Otobüs');
- const exact=rem.min===rem.max;
- if(exact && rem.min>1 && rem.nextStop && rem.nextStop!==stop.match){
-  connector(row,'');
-  node(row,'next','●',rem.nextStop.toLocaleLowerCase('tr-TR'));
-  connector(row,(rem.min-1)+' durak');
- }else{
-  connector(row,exact?rem.min+' durak':rem.min+'–'+rem.max+' durak');
+function makeTrack(card,rem,stop,index,vehicleKey){
+ const details=add(card,'details','track');
+ details.open=expandedTracks.has(vehicleKey)?expandedTracks.get(vehicleKey):index===0;
+ const summary=add(details,'summary','track-summary');
+ add(summary,'span','','Son 5 durak · GPS tahmini');
+ add(summary,'span','track-toggle','');
+ details.addEventListener('toggle',()=>expandedTracks.set(vehicleKey,details.open));
+ const body=add(details,'div','timeline');
+ if(!rem.suffix){
+  add(body,'p','timeline-warning','Güzergâh varyantı belirsiz. Son durakların sırası güvenilir biçimde gösterilemiyor.');
+  return;
  }
- node(row,'goal','✓',stop.short);
- if(!exact)add(wrap,'div','track-note','Güzergâh varyantı belirsiz olduğundan aralık gösteriliyor.');
+ const suffix=rem.suffix;
+ const at=rem.canPlace?suffix.indexOf(rem.nextName):-1;
+ if(at<0){
+  if(rem.min>suffix.length){
+   addVehicleMarker(body,'Henüz gösterilen son duraklara ulaşmadı');
+  }else{
+   addVehicleMarker(body,'Konum kesinleştirilemedi');
+   add(body,'p','timeline-warning','Birden fazla güzergâh olası. Otobüsün durak arası konumu gösterilmiyor.');
+  }
+ }
+ if(suffix.length<5)add(body,'p','timeline-warning','Güzergâhların ortak kalan '+suffix.length+' durağı gösteriliyor; daha önceki duraklar farklı olabilir.');
+ const line=add(body,'ol','timeline-stops');
+ for(let i=0;i<suffix.length;i++){
+  if(at===i){
+   const markerHolder=add(line,'li','timeline-vehicle');
+   addVehicleMarker(markerHolder,'Bu durağa yaklaşıyor');
+  }
+  const isGoal=i===suffix.length-1;
+  const phase=at>=0&&i<at?' passed':at===i?' next':'';
+  const li=add(line,'li','timeline-stop'+phase+(isGoal?' target':''));
+  add(li,'span','timeline-dot',isGoal?'◎':phase===' passed'?'✓':'');
+  add(li,'span','timeline-stop-name',isGoal?stop.title+' · biniş':suffix[i]);
+ }
+ add(body,'p','timeline-foot','Durak geçişleri gerçek kayıtlar değil, GPS konumundan yapılan tahminlerdir.');
 }
 function makeCard(bus,index,stop){
  const card=document.createElement('article');
@@ -108,7 +143,7 @@ function makeCard(bus,index,stop){
  const exact=rem.min===rem.max;
  add(card,'div','rem'+(exact?'':' range'),exact?'≈ '+rem.min+' durak':rem.min+'–'+rem.max+' durak');
  add(card,'div','detail',exact?'GPS tabanlı tahmin':'Güzergâh belirsiz · tahmini aralık');
- progress(card,rem,stop);
+ makeTrack(card,rem,stop,index,stop.code+':'+String(bus.kapino||bus.plate||index));
  return card;
 }
 function live13(arrivals){
