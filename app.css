@@ -1,5 +1,5 @@
-/* Mobil tek-ekran tasarımı · PWA V1 */
-:root{color-scheme:dark;--bg:#10151d;--card:#1b2330;--border:#344154;--text:#f7f9fd;--muted:#afbdd1;--accent:#93b9ff;--warning:#ffd281}
+/* Mobil tek ekran tasarımı · PWA V2 */
+:root{color-scheme:dark;--bg:#10151d;--card:#1b2330;--border:#344154;--text:#f7f9fd;--muted:#afbdd1;--accent:#93b9ff;--warning:#ffd281;--good:#72d8a6}
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.38 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -12,7 +12,7 @@ h1{font-size:22px;font-weight:800;line-height:1.15;margin:0 0 5px;letter-spacing
 button{background:var(--accent);border:0;border-radius:12px;padding:12px 13px;font-weight:750;font-size:15px;color:#122035;cursor:pointer;touch-action:manipulation}
 button:disabled{opacity:.65}
 button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.status{font-size:13px;color:var(--muted);margin:17px 0 12px;min-height:19px}
+.status{font-size:13px;color:var(--muted);margin:14px 0 12px;min-height:19px}
 .card{border:1px solid var(--border);background:var(--card);border-radius:19px;padding:17px 19px;margin:0 0 12px}
 .card.primary{border-color:#5575a3}
 .card-top{display:flex;justify-content:space-between;align-items:start;gap:14px}
@@ -31,3 +31,26 @@ footer a{color:var(--accent);margin-left:auto}
 @media(min-height:680px){.card{padding-top:20px;padding-bottom:20px}.rem{margin-top:19px}}
 @media(max-width:350px){main{padding-left:12px;padding-right:12px}.route-number{font-size:26px;min-width:53px;padding:11px}h1{font-size:20px}.subhead{font-size:12px}button{padding:10px;font-size:13px}}
 @media(prefers-reduced-motion:no-preference){button:active{transform:scale(.98)}}
+
+/* Durak seçimi */
+.stop-picker{margin-top:22px}
+.stop-picker-title{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);margin-bottom:8px}
+.stop-options{background:#222d3c;border:1px solid var(--border);border-radius:13px;padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.stop-option{background:transparent;color:var(--muted);border-radius:9px;padding:11px 7px;font-size:14px;line-height:1.15}
+.stop-option[aria-pressed="true"]{background:#82aff6;color:#101a2b;box-shadow:0 1px 5px #0a0d13aa}
+.stop-description{font-size:12px;color:var(--muted);margin:8px 1px 0}
+/* Küçük güzergâh çizgisi: kesin GPS konumu değildir */
+.track{margin-top:14px;border-top:1px solid var(--border);padding-top:11px}
+.track-title{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.045em;margin-bottom:10px}
+.track-steps{display:flex;align-items:flex-start;gap:5px;min-width:0}
+.track-step{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;flex:1 1 0}
+.track-dot{height:23px;min-width:23px;padding:1px;border:2px solid #7c91ae;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px}
+.track-step.bus .track-dot{background:#254b79;border-color:var(--accent)}
+.track-step.goal .track-dot{background:var(--good);border-color:var(--good);color:#132b21;font-weight:900}
+.track-label{font-size:10px;color:var(--muted);text-align:center;line-height:1.2;overflow-wrap:anywhere}
+.track-step.goal .track-label{color:var(--text);font-weight:750}
+.track-between{display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-start;flex:1.6 1 0;min-width:0}
+.track-arrow{line-height:23px;font-size:18px;color:#87a2c9}
+.track-distance{font-size:10px;color:var(--muted);line-height:1.2;text-align:center}
+.track-note{font-size:11px;color:var(--muted);margin-top:9px}
+@media(max-width:350px){.stop-option{font-size:12px;padding:9px 4px}.track-title{font-size:10px}}
