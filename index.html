@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10151d">
-  <meta name="description" content="13 numaralı otobüsün Kadıköy yönünde Dinç Sokak durağına kalan tahmini durak sayısı.">
+  <meta name="description" content="13 Kadıköy yönünde Berrak Sitesi veya Dinç Sokak durağına kalan tahmini durak sayısı.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="stylesheet" href="./app.css">
-  <title>13 · Dinç Sokak</title>
+  <title>13 · Otobüs Takip</title>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -17,14 +17,23 @@
   <header>
     <div class="heading">
       <div class="route-number" aria-label="13 numaralı hat">13</div>
-      <div><h1>Dinç Sokak</h1><p class="subhead">Kadıköy yönü · 200051</p></div>
+      <div><h1>Otobüs Takip</h1><p class="subhead">Kadıköy yönü</p></div>
     </div>
     <button id="refresh" type="button" aria-label="Otobüs bilgilerini yenile">Yenile</button>
   </header>
+
+  <section class="stop-picker" aria-label="Biniş durağını seç">
+    <div class="stop-picker-title">BİNECEĞİM DURAK</div>
+    <div class="stop-options" role="group" aria-label="Biniş durağı">
+      <button class="stop-option" id="stop-berrak" type="button" data-stop="berrak" aria-pressed="false">Berrak Sitesi</button>
+      <button class="stop-option" id="stop-dinc" type="button" data-stop="dinc" aria-pressed="true">Dinç Sokak</button>
+    </div>
+    <p class="stop-description" id="stop-description">Dinç Sokak · 200051</p>
+  </section>
   <p id="status" role="status" class="status">Canlı veriler alınıyor…</p>
   <section id="vehicles" class="vehicles" aria-label="Yaklaşan 13 otobüsleri" aria-live="polite"></section>
   <p id="more" class="more" hidden></p>
-  <footer><span class="dot"></span><span>30 sn'de bir güncellenir · GPS durak sayısı <strong>tahminidir</strong>.</span><a href="https://iettapi.pcislocked.net/v1/stops/200051/arrivals" target="_blank" rel="noopener noreferrer">Kaynak</a></footer>
+  <footer><span class="dot"></span><span>30 sn'de bir güncellenir · GPS durak sayısı <strong>tahminidir</strong>.</span><a id="source" href="https://iettapi.pcislocked.net/v1/stops/200051/arrivals" target="_blank" rel="noopener noreferrer">Kaynak</a></footer>
 </main>
 </body>
 </html>
