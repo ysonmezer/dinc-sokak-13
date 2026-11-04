@@ -1,38 +1,25 @@
-# 13 Otobüs Takip — PWA V2
+# 13 Otobüs Takip — PWA V3
 
-İETT'nin **13 numaralı hattını**, yalnızca **Kadıköy yönünde** takip eden küçük Android PWA. **13M dışarıda tutulur**; kapı numarası M ile başlayan ama route_code alanı 13 olan otobüsler yanlışlıkla elenmez.
+İETT'nin Kadıköy yönüne giden yalnızca **13** numaralı otobüslerini izleyen hafif PWA. **13M dahil değildir.**
 
-## Biniş durakları
+## Duraklar
+- **Dinç Sokak** — 200051
+- **Berrak Sitesi (Şenol Güneş Bulvarı)** — 224031
 
-- **Dinç Sokak:** İETT durak kodu 200051 (V1'in durağı).
-- **Berrak Sitesi:** Kullanıcının yerel adlandırması; İETT durağı **Şenol Güneş Bulvarı**, durak kodu 224031.
-- Üstteki iki düğmeyle geçiş yapılır; son seçim cihazdaki localStorage içinde hatırlanır.
-- Ayrı uç noktalar: https://iettapi.pcislocked.net/v1/stops/200051/arrivals ve https://iettapi.pcislocked.net/v1/stops/224031/arrivals.
-- Durak değiştirildiğinde önceki sorgu iptal edilir; yeni durak için ayrı sorgu başlatılır.
+Seçilen durak cihazda saklanır (eski `dinc13-v2-stop` anahtarı korunmuştur). Her 30 saniyede seçili durağın ayrı geliş servisi sorgulanır.
 
-## Tahminler ve görsel çizgi
+## Son 5 durak çizelgesi
 
-- Tam hat filtresi: route_code === "13"; Kadıköy varış yönü ek koşul.
-- Kaynak stops.json'un **9 Kadıköy yönlü varyantının** Dinç Sokak'a kadar olan durak koordinatları V1'den korunur.
-- Şenol Güneş Bulvarı'nı içermeyen kısa güzergâhlar bu durağın GPS hesabına dahil edilmez.
-- Bir aracın konumu sıralı durakların oluşturduğu çizgiye izdüşürülür; 250 m'den uzak konumlarda güvenilir eşleşme yapılmaz.
-- Olası varyantlar farklı sonuçlar verirse **kalan durak aralığı** gösterilir. Adayların sıradaki durak adı aynıysa görsel çizgide bu ad kullanılır.
-- **Görsel ilerleme ve durak sayısı GPS tabanlı tahmindir**, doğrulanmış durak geçişi değildir.
-- Sağdaki dakika değeri API tarafından sağlanan **ayrı** bir geliş tahminidir. Durak sayısı ve dakika her zaman birbiriyle uyuşmayabilir.
-- 4 dakikadan eski GPS saatlerinde durak sayısı yerine eski veri uyarısı gösterilir.
+- Sıralı son durak adları; geçmiş olduğu tahmin edilen duraklar ve yaklaşmakta olduğu tahmin edilen bir sonraki durak gösterilir.
+- Otobüs son bölüme girmediyse bunun bilgisi yazılır.
+- Alternatif güzergâhlarda yalnızca tüm olası varyantların ortak son durakları gösterilir. Konum güvenilir eşleşmiyorsa marker yerleştirilmez.
+- **Hedef durak yeşil boş halka ile işaretlenir:** araç ulaştı anlamında yeşil onay kullanılmaz.
+- İlk aracın çizelgesi açık, ikincininki katlanmış olarak başlar. Kullanıcı açma tercihi 30 saniyelik yenilemede korunur.
 
-## Çalıştırma ve yayın
+## Veri sınırları
 
-- Uygulama dosyaları: index.html, app.css, app.js, manifest.webmanifest, sw.js, icons.
-- GitHub Pages: https://ysonmezer.github.io/dinc-sokak-13/
-- Android Chrome'da adresi açıp **Uygulamayı yükle** / **Ana ekrana ekle** seçilir.
-- Sayfa görünürken yaklaşık 30 saniyede bir yenilenir; arka planda sürekli GPS kullanılmaz.
-- Service worker yalnızca uygulama kabuğunu önbelleğe alır. **Canlı API yanıtları önbelleğe alınmaz**.
+`https://iettapi.pcislocked.net/v1/stops/{code}/arrivals` içindeki koordinatlar yerleşik durak bilgileriyle karşılaştırılır. Yol geometrisi ve durak geçiş olayı doğrulanmadığı için **bütün durak/geçiş gösterimleri GPS temelli tahmindir**. Farklı güzergâhlar, GPS gecikmesi veya bir kavşak eşleşmeyi etkileyebilir. Araçların gerçek geçişleri fiziksel veya ayrı kaynakla doğrulanmalıdır.
 
-## Test durumu ve sınırlamalar
+## Yayım
 
-- V1 için Dinç Sokak'ta kullanıcı tarafından canlı test yapıldı: C-275 tahmini 6→3→1 durak ilerledi ve listeden çıktı.
-- V2'nin seçime göre iki farklı URL sorgulaması ve yalnız 13'ü filtrelemesi örnek verilerle sınandı.
-- **224031 için gerçek İETT canlı yanıtı henüz kullanıcı cihazında doğrulanmadı.** Bu yüzden V2, her iki durak telefonda canlı test edilene kadar pilot sürüm sayılmalı.
-- Üçüncü taraf iettapi.pcislocked.net servisinin çalışma süresi, CORS ve veri doğruluğu garanti değildir.
-- Depo ve GitHub Pages herkese açıktır.
+GitHub Pages, `main`, `/(root)`. PWA kabuğu `dinc13-shell-v3.0.0` önbelleğiyle sürümlenir. Canlı API yanıtları çevrimdışında saklanmaz.
