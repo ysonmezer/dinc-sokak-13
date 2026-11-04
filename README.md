@@ -1,4 +1,4 @@
-# 13 Otobüs Takip — PWA V4.1
+# 13 Otobüs Takip — PWA V4.2
 
 **Durum:** Mobil önizleme ve otomatik testler başarılı; gerçek cihazda V4 canlı testi bekleniyor. **Tarih:** 4 Kasım 2026.
 
@@ -65,3 +65,13 @@ Veri kaynağı üçüncü taraf API'dir; servis yapısı ve erişimi değişirse
 - İETT 13M hariç, 13 Kadıköy yönü; Berrak Sitesi (224031) ve Dinç Sokak (200051) seçimi devam eder.
 - GitHub Pages main / root üzerinden yayımlanır. Önbellek sürümü dinc13-shell-v4.1.0.
 - Test: node sözdizimi, sahte DOM ve Playwright mobil genişlikli görsel testler başarılı. Gerçek GPS geçişi ayrı doğrulanmalıdır.
+
+
+## V4.2 — Süre/GPS tutarlılık ve ani konum sıçraması denetimi
+
+- Normalleşmiş API ETA (`eta_minutes`) **değiştirilmez**. `eta <= 2 dk` ve GPS'e göre en az **5 durak**, veya `eta <= 5 dk` ve en az **8 durak** kalmışsa **Süre şüpheli** uyarısı çıkar. Bu eşikler saha testine açık korumacı başlangıç kurallarıdır, istatistiksel olarak kalibre edilmiş eşikler değildir.
+- Çelişkili ETA, kartta soru işareti ve sarı uyarı ile gösterilir; başka çelişkisiz araçlar varken ETA sıralamasında arkaya alınır. Kaynağın kendi ETA'sını düzeltmeye çalışmaz. Durak sayısı her zaman GPS tahminidir.
+- Cihaz açıkken her hat/durak/araç için son makul GPS gözlemi bellekte tutulur. İki farklı `last_seen_ts` gözlemi 180 s içinde 220 metreden veya `37 m/s × Δt + 120 m` eşiğinden fazla sıçrarsa **GPS değişimi** uyarısı üretilir. Aynı sürede tahmini en az 3 durak geri gidildiğinde de uyarı çıkar.
+- İlk ani konum değişiminde önceki makul durak tahmini **geçici ve açıkça etiketlenmiş** olarak gösterilir. Sıçrayan konumdan iki tutarlı veri gelirse yeni konum alınır, ancak güzergâh doğrulandığı iddia edilmez. Kayıtlar diske yazılmaz; 10 dakikada atılır.
+- GPS zamanı yoksa veya 240 saniyeden eskiyse durak tahmini gösterilmez. 13/13M tam kod filtresi ve Kadıköy yönü korunur. Gizlenen araçların sayısı da gösterilir.
+- Başarı ölçütü: 1 dk/10 durak çelişkisini işaretlemek, 1 dk/2 durak makul örneğini gereksiz işaretlememek, iki durakta ayırıcı filtreyi korumak ve ardışık GPS sıçramalarında sahte durak düşüşü göstermemek.
