@@ -1,4 +1,4 @@
-/* Mobil tek ekran tasarımı · PWA V3 */
+/* Mobil tek ekran tasarımı · PWA V4 */
 :root{color-scheme:dark;--bg:#10151d;--card:#1b2330;--border:#344154;--text:#f7f9fd;--muted:#afbdd1;--accent:#93b9ff;--warning:#ffd281;--good:#72d8a6}
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--bg)}
@@ -63,3 +63,9 @@ footer a{color:var(--accent);margin-left:auto}
 .timeline-warning{color:var(--warning);font-size:11px;margin:4px 0 8px}
 .timeline-foot{font-size:10px;color:var(--muted);margin:8px 0 0}
 @media(max-width:350px){.stop-option{font-size:12px;padding:9px 4px}}
+
+/* V4: compact continuation row for up to ten upcoming stops */
+.timeline-more{display:flex;align-items:center;gap:9px;margin:5px 0 5px 1px;padding:7px 10px;
+  border:1px dashed #587399;border-radius:9px;background:#243044;color:#c5dafa;font-weight:750;font-size:12px;line-height:1.3}
+.timeline-more-icon{font-size:21px;color:var(--accent);line-height:1}
+.timeline-note{font-size:11px;color:var(--muted);margin:7px 0 4px}
