@@ -106,6 +106,84 @@ function ageSeconds(hms){
   if(delta<-43200)delta+=86400;
   return delta;
 }
+// V4.2: conservative, per-stop GPS consistency checks. All observations are
+// kept only in memory while the app is open, never uploaded or persisted.
+const gpsHistory=new Map();
+const GPS_HISTORY_TTL_MS=10*60*1000;
+function vehicleIdentity(bus,stop){
+  return stop.code+':'+String(bus.kapino||bus.plate||'—')+':'+String(bus.plate||'—');
+}
+function gpsTimeMillis(bus,now){
+  const age=ageSeconds(bus.last_seen_ts);
+  return age===null ? null : now-age*1000;
+}
+function geoDistanceMeters(a,b){
+  const [dx,dy]=xy(a.lat,a.lon,b.lat,b.lon);
+  return Math.hypot(dx,dy);
+}
+function analyzeArrival(bus,stop,now=Date.now()){
+  const latitude=bus.lat==null?NaN:Number(bus.lat);
+  const longitude=bus.lon==null?NaN:Number(bus.lon);
+  const coordsValid=Number.isFinite(latitude)&&Number.isFinite(longitude)
+    &&Math.abs(latitude)<=90&&Math.abs(longitude)<=180;
+  const age=ageSeconds(bus.last_seen_ts);
+  const stale=age===null||age>240||age< -120;
+  const eta=bus.eta_minutes==null?NaN:Number(bus.eta_minutes);
+  const etaValid=Number.isFinite(eta)&&eta>=0;
+  const current=(!stale&&coordsValid)?remainingStops({latitude,longitude},stop.code):null;
+  const key=vehicleIdentity(bus,stop);
+  const ts=gpsTimeMillis(bus,now);
+  let rem=current;
+  let motionAlert='';
+  const prev=gpsHistory.get(key);
+  if(current && prev && ts!==null && prev.ts!==null){
+    const dt=(ts-prev.ts)/1000;
+    if(dt>0&&dt<=180){
+      const dist=geoDistanceMeters({lat:latitude,lon:longitude},prev);
+      // GPS jitter of 100-200 m is tolerated; an actual bus cannot plausibly
+      // travel 37 m/s plus a 120 m margin between these timestamps.
+      const jump=dist>Math.max(220,37*dt+120);
+      const regressed=prev.rem && current.min>=prev.rem.max+3;
+      const currentPoint={lat:latitude,lon:longitude,ts};
+      const repeated=prev.candidate&&
+        geoDistanceMeters(currentPoint,prev.candidate)<=150&&
+        (ts-prev.candidate.ts)/1000>0&&
+        (ts-prev.candidate.ts)/1000<=120;
+      if(repeated){
+        // Second coherent observation supersedes a quarantined outlier,
+        // irrespective of its now-increased elapsed time from the old fix.
+        motionAlert='Konum yeniden eşleştirildi; durak tahmini kontrol edilmeli.';
+        gpsHistory.set(key,{...currentPoint,rem:current,updatedAt:now});
+      }else if(jump||regressed){
+        rem=prev.rem;
+        motionAlert=jump?
+          'GPS konumu ani sıçradı; önceki makul konumun durak tahmini gösteriliyor.':
+          'Durak sayısı beklenmedik arttı; önceki tahmin geçici olarak gösteriliyor.';
+        gpsHistory.set(key,{...prev,candidate:currentPoint,updatedAt:now});
+      }else{
+        gpsHistory.set(key,{...currentPoint,rem:current,updatedAt:now});
+      }
+    }else if(dt>180){
+      gpsHistory.set(key,{lat:latitude,lon:longitude,ts,rem:current,updatedAt:now});
+    }
+    // Equal or older timestamps do not count as a new observation.
+  }else if(current && ts!==null){
+    gpsHistory.set(key,{lat:latitude,lon:longitude,ts,rem:current,updatedAt:now});
+  }
+  const etaConflict=Boolean(rem&&etaValid&&(
+    (eta<=2&&rem.min>=5)||(eta<=5&&rem.min>=8)));
+  // This is a heuristic warning, not a recalculation of IETT arrival minutes.
+  const warning=etaConflict?
+    'Süre/GPS uyuşmuyor: '+Math.round(eta)+' dk bildirilirken GPS yaklaşık '+renderRemaining(rem.min,rem.max)+' durak gösteriyor.':
+    '';
+  return {bus,rem,stale,eta,etaValid,etaConflict,warning,motionAlert,
+    gpsAge:age,identity:key};
+}
+function purgeGpsHistory(now=Date.now()){
+  for(const [key,entry] of gpsHistory){
+    if(now-entry.updatedAt>GPS_HISTORY_TTL_MS)gpsHistory.delete(key);
+  }
+}
 function add(parent,tag,cls,value){
   const el=document.createElement(tag);
   if(cls)el.className=cls;
@@ -199,28 +277,40 @@ function makeTrack(card,rem,stop,index,vehicleKey){
   }
   add(body,'p','timeline-foot','Durak geçişleri ölçülmedi. GPS konumu ve olası İETT güzergâhlarına göre tahmin edilir.');
 }
-function makeCard(bus,index,stop){
-  const card=add(document.createDocumentFragment(),'article','card'+(index===0?' primary':''));
+function makeCard(item,index,stop){
+  const {bus,rem,stale,eta,etaValid,etaConflict,warning,motionAlert}=item;
+  const card=add(document.createDocumentFragment(),'article',
+    'card'+(index===0?' primary':'')+(etaConflict?' has-warning':''));
   const top=add(card,'div','card-top');
   const info=add(top,'div','');
   add(info,'div','plate','Araç '+(bus.kapino||'—'));
   add(info,'div','plate',bus.plate||'Plaka bilinmiyor');
-  const age=ageSeconds(bus.last_seen_ts),stale=age!==null&&(age>240||age< -120);
-  const minutes=Number(bus.eta_minutes);
-  add(top,'div','eta',!stale&&Number.isFinite(minutes)&&minutes>=0?Math.round(minutes)+' dk':'— dk');
+  const etaText=etaValid&&!stale?Math.round(eta)+' dk'+(etaConflict?' ?':''):'— dk';
+  add(top,'div','eta'+(etaConflict?' eta-alert':''),etaText);
   if(stale){
     add(card,'div','rem','Veri eski');
-    add(card,'div','detail','GPS zamanı: '+bus.last_seen_ts+' · Durak tahmini gösterilmiyor.');return card;
+    add(card,'div','detail','GPS zamanı güncel değil veya doğrulanamadı: '+String(bus.last_seen_ts||'—'));
+    return card;
   }
-  const rem=remainingStops({latitude:Number(bus.lat),longitude:Number(bus.lon)},stop.code);
   if(!rem){
     add(card,'div','rem','— durak');
-    add(card,'div','detail','GPS konumu seçilen güzergâhla eşleşmedi; tahmin verilemiyor.');return card;
+    add(card,'div','detail','GPS konumu seçilen güzergâhla eşleşmedi; tahmin verilemiyor.');
+    return card;
   }
   const exact=rem.min===rem.max;
   add(card,'div','rem'+(exact?'':' range'),exact?'≈ '+rem.min+' durak':rem.min+'–'+rem.max+' durak');
   add(card,'div','detail',exact?'GPS tabanlı tahmin':'Güzergâh belirsiz · tahmini aralık');
-  makeTrack(card,rem,stop,index,stop.code+':'+String(bus.kapino||bus.plate||index));
+  if(warning){
+    const alert=add(card,'div','confidence-alert');
+    add(alert,'strong','','⚠ Süre şüpheli');
+    add(alert,'span','',warning+' Evden çıkış kararını yalnız bu dakikaya göre verme.');
+  }
+  if(motionAlert){
+    const alert=add(card,'div','motion-alert');
+    add(alert,'strong','','GPS değişimi');
+    add(alert,'span','',motionAlert);
+  }
+  makeTrack(card,rem,stop,index,item.identity);
   return card;
 }
 function live13(arrivals){
@@ -247,13 +337,22 @@ async function refresh(){
     if(!Array.isArray(data))throw new Error('API beklenmeyen veri döndürdü');
     if(seq!==generation)return;
     const buses=live13(data);
+    const now=Date.now();
+    purgeGpsHistory(now);
+    const assessed=buses.map(bus=>analyzeArrival(bus,stop,now));
+    // When ETA conflicts with GPS, move that record behind non-conflicting
+    // arrivals; never silently rewrite its ETA or claim precise arrival.
+    assessed.sort((a,b)=>Number(a.etaConflict)-Number(b.etaConflict)||
+      (a.etaValid?a.eta:Infinity)-(b.etaValid?b.eta:Infinity));
     listEl.replaceChildren();
-    for(const [i,bus] of buses.slice(0,2).entries())listEl.appendChild(makeCard(bus,i,stop));
+    for(const [i,item] of assessed.slice(0,2).entries())listEl.appendChild(makeCard(item,i,stop));
     if(!buses.length)add(listEl,'div','empty','Bu durakta şu anda yaklaşan 13 aracı bildirilmiyor.');
     const hidden=Math.max(0,buses.length-2);
     moreEl.hidden=!hidden;
     if(hidden)moreEl.textContent='+'+hidden+' araç daha var · yalnızca ilk iki araç gösteriliyor';
-    statusEl.textContent=new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · '+buses.length+' yaklaşan araç';
+    const conflicts=assessed.filter(x=>x.etaConflict).length;
+    statusEl.textContent=new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · '+buses.length+' yaklaşan araç'+
+      (conflicts?' · '+conflicts+' süre/GPS uyuşmazlığı':'');
   }catch(err){
     if(seq!==generation)return;
     listEl.replaceChildren();moreEl.hidden=true;
