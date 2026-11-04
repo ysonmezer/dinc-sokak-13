@@ -1,4 +1,4 @@
-/* Mobil tek ekran tasarımı · PWA V4.1 */
+/* Mobil tek ekran tasarımı · PWA V4.2 */
 :root{color-scheme:dark;--bg:#10151d;--card:#1b2330;--border:#344154;--text:#f7f9fd;--muted:#afbdd1;--accent:#93b9ff;--warning:#ffd281;--good:#72d8a6}
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--bg)}
@@ -92,3 +92,12 @@ footer a{color:var(--accent);margin-left:auto}
 .timeline-alt-ellipsis{margin:6px 0 1px;font-size:10px;color:var(--muted)}
 .track-summary{min-height:38px}
 @media(max-width:360px){.timeline-uncertain{padding:9px 8px}.timeline-shared{padding-left:7px}}
+
+/* V4.2: clearly distinguish an internally inconsistent API ETA. */
+.card.has-warning{border-color:#8f7343}
+.eta-alert{color:var(--warning)}
+.confidence-alert,.motion-alert{display:flex;flex-direction:column;gap:3px;margin:11px 0 3px;
+ padding:10px 11px;border-radius:10px;font-size:12px;line-height:1.4}
+.confidence-alert{color:#ffe5a9;background:#423423;border:1px solid #927244}
+.motion-alert{color:#d8eaff;background:#233b52;border:1px solid #506a86}
+.confidence-alert strong,.motion-alert strong{font-size:12px}
