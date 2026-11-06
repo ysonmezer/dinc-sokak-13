@@ -9,7 +9,7 @@
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="stylesheet" href="./app.css">
-  <title>13 · Otobüs Takip V4.2.1</title>
+  <title>13 · Otobüs Takip V4.2.2</title>
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -29,6 +29,15 @@
       <button class="stop-option" id="stop-dinc" type="button" data-stop="dinc" aria-pressed="true">Dinç Sokak</button>
     </div>
     <p class="stop-description" id="stop-description">Dinç Sokak · 200051</p>
+    <details class="stop-manager" id="stop-manager">
+      <summary>Başka durak seç / kısayolları değiştir</summary>
+      <p class="stop-manager-info">Bir durak seçtiğinde üstteki iki kısayoldan biri olur. Seçimin yalnızca bu telefonda saklanır.</p>
+      <div class="stop-manager-options" role="group" aria-label="13 hattındaki biniş durakları">
+        <button type="button" data-extra-stop="berrak">Berrak Sitesi</button>
+        <button type="button" data-extra-stop="dinc">Dinç Sokak</button>
+        <button type="button" data-extra-stop="murat">Şehit Murat Filik Parkı</button>
+      </div>
+    </details>
   </section>
   <p id="status" role="status" class="status">Canlı veriler alınıyor…</p>
   <section id="vehicles" class="vehicles" aria-label="Yaklaşan 13 otobüsleri" aria-live="polite"></section>
