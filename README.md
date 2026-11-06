@@ -1,4 +1,4 @@
-# 13 Otobüs Takip — PWA V4.2.1
+# 13 Otobüs Takip — PWA V4.2.2
 
 **Durum:** Mobil önizleme ve otomatik testler başarılı; gerçek cihazda V4 canlı testi bekleniyor. **Tarih:** 4 Kasım 2026.
 
@@ -83,3 +83,13 @@ Veri kaynağı üçüncü taraf API'dir; servis yapısı ve erişimi değişirse
 - Kullanıcının elle yaptığı açma/kapatma tercihi araç+durak anahtarında mevcut oturum boyunca korunur; 30 saniyelik otomatik yenileme bunu sıfırlamaz. Yeni bir ilk araç görüntülenirse kendi varsayılanı açık olur.
 - Yalnızca arayüz başlangıç durumu değişmiştir. Hat/yön filtreleri, ETA/GPS hesapları, sıralama ve Raspberry Pi alarm servisi değiştirilmemiştir.
 - PWA önbellek sürümü: `dinc13-shell-v4.2.1`.
+
+
+## V4.2.2 — Telefona özel durak kısayolları ve Şehit Murat Filik Parkı (06.11.2026)
+
+- Kadıköy yönünde yeni seçenek: **Şehit Murat Filik Parkı, 214201**. Orijinal kullanıcının `stops.json` güzergâh verisinden, dokuz varyantın her birinde Dinç Sokak'tan sonraki **Çamlık Mahallesi 214232 → Çamlık Merkez Camii 214221 → Şehit Emre Anşin 214211 → Şehit Murat Filik Parkı 214201** noktaları ve GPS koordinatları eklendi.
+- Önceki iki düğme (Berrak Sitesi, Dinç Sokak) daha önce uygulamayı kullanan telefonlarda **aynı şekilde başlar**. Küçük, varsayılan kapalı **“Başka durak seç / kısayolları değiştir”** bölümü içinden üçüncü durak seçilebilir. Yeni durak seçilince üstteki iki kısayoldan seçili olmayanı değiştirir; kullanıcı sık kullanılan iki durağı doğrudan tek dokunuşla açabilir.
+- Seçili durak önceki `dinc13-v2-stop`, iki kısayol yeni `dinc13-v4-favorites` localStorage anahtarında **yalnızca o cihazda** saklanır. Hesap veya çapraz cihaz senkronizasyonu yoktur.
+- Uygulama üçüncü durak için de `/v1/stops/214201/arrivals` adresini sorgular; **canlı API yanıtının gerçek telefon testi henüz yapılmadı**. Bu endpoint kullanılamıyorsa kullanıcıya mevcut bağlantı hatası göstergesi çıkar.
+- Önceki 13/13M filtresi, Kadıköy yönü kontrolü, GPS eşleştirmesi, V4.2 süre/GPS tutarlılığı, GPS sıçrama koruması ve ilk aracın açık başlayan durak listesi korunur. Raspberry Pi alarm servisine dokunulmadı.
+- Önbellek `dinc13-shell-v4.2.2`. Node regresyon testi: eski duraklar ve yeni 214201 güzergâhı, iki kısayol, localStorage ve ilk araç açık/ikinci araç kapalı. Mobil tarayıcı/gerçek API testi ayrıca gereklidir.
