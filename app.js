@@ -236,7 +236,7 @@ function makeTrack(card,rem,stop,index,vehicleKey){
   const details=add(card,'details','track');
   // The daily glance should prioritize minutes and stop count. Opening a
   // vehicle's timeline persists through the 30-second refresh.
-  details.open=expandedTracks.has(vehicleKey)?expandedTracks.get(vehicleKey):false;
+  details.open=expandedTracks.has(vehicleKey)?expandedTracks.get(vehicleKey):index===0;
   const summary=add(details,'summary','track-summary');
   add(summary,'span','','Yaklaşan duraklar · GPS tahmini');
   add(summary,'span','track-toggle','');
