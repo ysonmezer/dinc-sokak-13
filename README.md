@@ -1,4 +1,4 @@
-# 13 Otobüs Takip — PWA V4.2
+# 13 Otobüs Takip — PWA V4.2.1
 
 **Durum:** Mobil önizleme ve otomatik testler başarılı; gerçek cihazda V4 canlı testi bekleniyor. **Tarih:** 4 Kasım 2026.
 
@@ -75,3 +75,11 @@ Veri kaynağı üçüncü taraf API'dir; servis yapısı ve erişimi değişirse
 - İlk ani konum değişiminde önceki makul durak tahmini **geçici ve açıkça etiketlenmiş** olarak gösterilir. Sıçrayan konumdan iki tutarlı veri gelirse yeni konum alınır, ancak güzergâh doğrulandığı iddia edilmez. Kayıtlar diske yazılmaz; 10 dakikada atılır.
 - GPS zamanı yoksa veya 240 saniyeden eskiyse durak tahmini gösterilmez. 13/13M tam kod filtresi ve Kadıköy yönü korunur. Gizlenen araçların sayısı da gösterilir.
 - Başarı ölçütü: 1 dk/10 durak çelişkisini işaretlemek, 1 dk/2 durak makul örneğini gereksiz işaretlememek, iki durakta ayırıcı filtreyi korumak ve ardışık GPS sıçramalarında sahte durak düşüşü göstermemek.
+
+
+## V4.2.1 — İlk otobüs güzergâhı varsayılan açık (06.11.2026)
+
+- Uygulama yeni açıldığında **ilk gösterilen otobüsün** “Yaklaşan duraklar · GPS tahmini” bölümü açık, **ikinci otobüsün** bölümü kapalıdır.
+- Kullanıcının elle yaptığı açma/kapatma tercihi araç+durak anahtarında mevcut oturum boyunca korunur; 30 saniyelik otomatik yenileme bunu sıfırlamaz. Yeni bir ilk araç görüntülenirse kendi varsayılanı açık olur.
+- Yalnızca arayüz başlangıç durumu değişmiştir. Hat/yön filtreleri, ETA/GPS hesapları, sıralama ve Raspberry Pi alarm servisi değiştirilmemiştir.
+- PWA önbellek sürümü: `dinc13-shell-v4.2.1`.
