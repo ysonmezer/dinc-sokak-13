@@ -68,4 +68,19 @@ assert.equal(filtered.length,1);assert.equal(filtered[0].kapino,'M-2349');
 berrak.fire('click');assert.equal(storage['dinc13-v2-stop'],'berrak');
 assert.equal(ids['source'].href.endsWith('/224031/arrivals'),true);
 dinc.fire('click');assert.equal(ids['source'].href.endsWith('/200051/arrivals'),true);
+
+ // V4.2.1: first approaching vehicle's route details open on first render,
+ // second closed; user choices survive card replacement during refresh.
+ const defaultRoute=beforeDinc;
+ const uiStop={code:'200051',title:'Dinç Sokak'};
+ const uiCard=(index,key)=>{const c=new Elem('article');track(c,defaultRoute,uiStop,index,key);return c.children[0]};
+ const firstUI=uiCard(0,'default-ui-first'),secondUI=uiCard(1,'default-ui-second');
+ assert.equal(firstUI.open,true,'first route opens by default');
+ assert.equal(secondUI.open,false,'second route starts closed');
+ firstUI.open=false;firstUI.fire('toggle');
+ assert.equal(uiCard(0,'default-ui-first').open,false,'user close persists through refresh');
+ secondUI.open=true;secondUI.fire('toggle');
+ assert.equal(uiCard(1,'default-ui-second').open,true,'user open persists through refresh');
+ assert.equal(uiCard(0,'default-ui-new').open,true,'new first bus opens by default');
+ assert.equal(uiCard(1,'default-ui-new-second').open,false,'new second bus starts closed');
 console.log('PASS V4: exact 13 filter, both stops, last 4/2/1, >5 in middle, 10 max, branch uncertainty, dynamic list, non-arrival marker, preferences');
