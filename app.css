@@ -101,3 +101,19 @@ footer a{color:var(--accent);margin-left:auto}
 .confidence-alert{color:#ffe5a9;background:#423423;border:1px solid #927244}
 .motion-alert{color:#d8eaff;background:#233b52;border:1px solid #506a86}
 .confidence-alert strong,.motion-alert strong{font-size:12px}
+
+/* V4.2.2: per-device favorite stops, preserving original two-button start view. */
+.stop-manager{margin-top:7px;border-top:1px solid #34415450;padding-top:4px}
+.stop-manager>summary{list-style:none;display:inline-flex;align-items:center;gap:5px;min-height:35px;
+ font-size:12px;font-weight:650;color:var(--accent);cursor:pointer;touch-action:manipulation}
+.stop-manager>summary::-webkit-details-marker{display:none}
+.stop-manager>summary::after{content:'⌄';font-size:16px;line-height:1}
+.stop-manager[open]>summary::after{transform:rotate(180deg)}
+.stop-manager>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.stop-manager-info{font-size:12px;color:var(--muted);line-height:1.5;margin:5px 0 10px}
+.stop-manager-options{display:grid;gap:7px;margin-bottom:10px}
+.stop-manager-options button{background:#27374a;color:var(--text);font-weight:600;text-align:left;
+ border:1px solid var(--border);padding:10px 12px;min-height:42px;font-size:13px}
+.stop-manager-options button[data-favorite="true"]::after{content:' ★';color:var(--accent)}
+.stop-manager-options button[aria-pressed="true"]{border-color:var(--accent);background:#2a4770}
+.stop-option{overflow-wrap:anywhere;min-width:0}
