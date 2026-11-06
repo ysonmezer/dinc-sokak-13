@@ -13,9 +13,10 @@ class Elem{
  get textContent(){return this._text+this.children.map(c=>c.textContent).join('')}
 }
 function all(root,pred){const res=[];function walk(el){if(pred(el))res.push(el);for(const child of el.children)walk(child)}walk(root);return res}
-const ids=Object.fromEntries(['status','vehicles','refresh','more','source','stop-description'].map(id=>[id,new Elem('div')]));
+const ids=Object.fromEntries(['status','vehicles','refresh','more','source','stop-description','stop-manager'].map(id=>[id,new Elem('div')]));
 const berrak=new Elem('button');berrak.dataset.stop='berrak';const dinc=new Elem('button');dinc.dataset.stop='dinc';
-const doc={getElementById:id=>ids[id],querySelectorAll:()=>[berrak,dinc],createElement:tag=>new Elem(tag),createDocumentFragment:()=>new Elem('fragment'),addEventListener:()=>{},visibilityState:'visible'};
+const otherStops=['berrak','dinc','murat'].map(key=>{const e=new Elem('button');e.dataset.extraStop=key;return e});
+const doc={getElementById:id=>ids[id],querySelectorAll:selector=>selector==='[data-stop]'?[berrak,dinc]:selector==='[data-extra-stop]'?otherStops:[],createElement:tag=>new Elem(tag),createDocumentFragment:()=>new Elem('fragment'),addEventListener:()=>{},visibilityState:'visible'};
 const storage={};const ctx=vm.createContext({document:doc,window:{},navigator:{},location:{protocol:'file:',hostname:''},localStorage:{getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=v},console,Math,Date,Number,String,Array,Object,Set,Map,AbortController,setTimeout:()=>1,clearTimeout:()=>{},setInterval:()=>1,fetch:()=>Promise.resolve({ok:true,json:async()=>[]})});
 vm.runInContext(code,ctx,{filename:'app.js'});
 const estimate=(lat,lon,stopCode)=>vm.runInContext(`remainingStops({latitude:${lat},longitude:${lon}},${JSON.stringify(stopCode)})`,ctx);
@@ -83,4 +84,21 @@ dinc.fire('click');assert.equal(ids['source'].href.endsWith('/200051/arrivals'),
  assert.equal(uiCard(1,'default-ui-second').open,true,'user open persists through refresh');
  assert.equal(uiCard(0,'default-ui-new').open,true,'new first bus opens by default');
  assert.equal(uiCard(1,'default-ui-new-second').open,false,'new second bus starts closed');
+// V4.2.2: default two shortcuts survive migration; new stop is per-device.
+assert.equal(berrak.dataset.stop,'berrak');
+assert.equal(dinc.dataset.stop,'dinc');
+otherStops[2].fire('click');
+assert.equal(storage['dinc13-v2-stop'],'murat');
+assert.equal(ids['source'].href.endsWith('/214201/arrivals'),true);
+assert.equal(berrak.dataset.stop,'dinc');
+assert.equal(dinc.dataset.stop,'murat');
+assert.equal(JSON.parse(storage['dinc13-v4-favorites']).join(','),'dinc,murat');
+const muratRem=getView([40.999567,29.124292],'214201');
+assert.equal(muratRem.min,4);
+assert.equal(muratRem.max,4);
+assert.equal(muratRem.stops.at(-1).code,'214201');
+assert.equal(vm.runInContext('ROUTES.length',ctx),9);
+assert(vm.runInContext('ROUTES.every(r=>r.points.some(p=>p[0]==="214201"))',ctx));
+assert.equal(berrak.attributes['aria-pressed'],'false');
+assert.equal(dinc.attributes['aria-pressed'],'true');
 console.log('PASS V4: exact 13 filter, both stops, last 4/2/1, >5 in middle, 10 max, branch uncertainty, dynamic list, non-arrival marker, preferences');
